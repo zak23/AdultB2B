@@ -7,6 +7,7 @@ A professional networking platform purpose-built for the adult industry. It enab
 ## Features (MVP)
 
 - **Authentication** - Email/password with JWT
+- **App shell (authenticated)** - Navbar and footer (Product, Account, Legal, Support links) on all logged-in pages
 - **Profiles** - Personal and company profiles with media
 - **Feed** - Posts (text, image, video, links) with engagement
 - **Messaging** - 1:1 and group messaging with real-time updates

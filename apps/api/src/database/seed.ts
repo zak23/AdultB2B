@@ -12,6 +12,9 @@ import { CompanyMember, CompanyMemberRole } from '../modules/companies/entities/
 import { Group, GroupVisibility } from '../modules/groups/entities/group.entity';
 import { GroupMember, GroupMemberRole } from '../modules/groups/entities/group-member.entity';
 import { Post, PostStatus, PostVisibility, ModerationStatus, PostKind, ContentFormat } from '../modules/posts/entities/post.entity';
+import { Reaction } from '../modules/engagement/entities/reaction.entity';
+import { ReactionType } from '../modules/engagement/entities/reaction-type.entity';
+import { Comment } from '../modules/engagement/entities/comment.entity';
 
 // Load environment variables (repo root and API folder)
 config({ path: '../../.env' });
@@ -144,6 +147,34 @@ const bulkPostTemplates = [
   'Growth mode. No days off.',
   'Thank you for the support. It doesn’t go unnoticed.',
   'Here for the long game. Quality always wins.',
+];
+
+const bulkCommentTemplates = [
+  'So good!',
+  'Agree 100%.',
+  'This is fire.',
+  'Needed this today.',
+  'Same energy.',
+  'Love this.',
+  'Facts.',
+  "Can't wait for more.",
+  'Yes!',
+  'So true.',
+  'Here for it.',
+  'Great point.',
+  'This hit different.',
+  'Needed to hear this.',
+  'Big facts.',
+  'Period.',
+  'This though.',
+  'So real.',
+  'Mood.',
+  'Exactly this.',
+  'Couldn’t agree more.',
+  'Keeping this one.',
+  'Saving this.',
+  'More of this please.',
+  'This is the one.',
 ];
 
 /** Deterministic pick: arr[i % arr.length] */
@@ -427,6 +458,9 @@ async function run() {
     const groupRepo = AppDataSource.getRepository(Group);
     const groupMemberRepo = AppDataSource.getRepository(GroupMember);
     const postRepo = AppDataSource.getRepository(Post);
+    const reactionTypeRepo = AppDataSource.getRepository(ReactionType);
+    const reactionRepo = AppDataSource.getRepository(Reaction);
+    const commentRepo = AppDataSource.getRepository(Comment);
 
     const adminRole = await ensureRole(roleRepo, 'admin', 'Administrator');
     await ensureRole(roleRepo, 'moderator', 'Moderator');
@@ -671,8 +705,89 @@ async function run() {
       await createPostWithPublishedAt(postRepo, author.id, content, publishedAt);
     }
 
+    // Engagement seed: reactions (likes etc.) and comments on posts
+    const reactionTypes = await reactionTypeRepo.find({
+      where: { isActive: true },
+      order: { createdAt: 'ASC' },
+    });
+    const publishedPosts = await postRepo.find({
+      where: { status: PostStatus.PUBLISHED },
+      order: { publishedAt: 'DESC' },
+      take: 120,
+    });
+
+    let reactionsCreated = 0;
+    for (let i = 0; i < Math.min(80, publishedPosts.length); i++) {
+      const post = publishedPosts[i];
+      const numReactions = 2 + (i % 7);
+      const usedUserIdx = new Set<number>();
+      for (let r = 0; r < numReactions; r++) {
+        const userIdx = (i * 11 + r * 5) % allPostAuthors.length;
+        if (usedUserIdx.has(userIdx)) continue;
+        usedUserIdx.add(userIdx);
+        const author = allPostAuthors[userIdx];
+        if (author.id === post.authorUserId) continue;
+        const rType = pick(reactionTypes, r);
+        const existing = await reactionRepo.findOne({
+          where: { userId: author.id, targetPostId: post.id },
+        });
+        if (existing) continue;
+        await reactionRepo.save(
+          reactionRepo.create({
+            userId: author.id,
+            reactionTypeId: rType.id,
+            targetPostId: post.id,
+          }),
+        );
+        reactionsCreated++;
+      }
+    }
+
+    let commentsCreated = 0;
+    const postComments: { postId: string; commentIds: string[] }[] = [];
+    for (let i = 0; i < Math.min(60, publishedPosts.length); i++) {
+      const post = publishedPosts[i];
+      const numComments = 1 + (i % 4);
+      const ids: string[] = [];
+      for (let c = 0; c < numComments; c++) {
+        const author = pick(allPostAuthors, (i * 7 + c * 13) % allPostAuthors.length);
+        const content = pick(bulkCommentTemplates, i + c);
+        const comment = await commentRepo.save(
+          commentRepo.create({
+            postId: post.id,
+            authorUserId: author.id,
+            content,
+            moderationStatus: ModerationStatus.APPROVED,
+            metadata: { seedTag: 'bulk' },
+          }),
+        );
+        ids.push(comment.id);
+        commentsCreated++;
+      }
+      postComments.push({ postId: post.id, commentIds: ids });
+    }
+
+    for (let i = 0; i < 15; i++) {
+      const pc = postComments[i % postComments.length];
+      if (pc.commentIds.length === 0) continue;
+      const parentId = pick(pc.commentIds, i);
+      const author = pick(allPostAuthors, (i * 17 + 3) % allPostAuthors.length);
+      const content = pick(bulkCommentTemplates, i + 20);
+      await commentRepo.save(
+        commentRepo.create({
+          postId: pc.postId,
+          authorUserId: author.id,
+          parentCommentId: parentId,
+          content,
+          moderationStatus: ModerationStatus.APPROVED,
+          metadata: { seedTag: 'bulk', reply: true },
+        }),
+      );
+      commentsCreated++;
+    }
+
     console.log('Seed completed.');
-    console.log(`Bulk: ${bulkUsersCreated.length} users, ${BULK_POST_COUNT} posts.`);
+    console.log(`Bulk: ${bulkUsersCreated.length} users, ${BULK_POST_COUNT} posts, ${reactionsCreated} reactions, ${commentsCreated} comments.`);
     console.log('Admin login:');
     console.log(`  Email: ${adminEmail}`);
     console.log(`  Password: ${adminPassword}`);
