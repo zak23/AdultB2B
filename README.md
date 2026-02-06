@@ -129,6 +129,9 @@ npm run docker:down
 # Reset database (warning: destroys data)
 npm run docker:reset
 
+# Seed database (admin + demo users + ~50 bulk users, ~200 posts)
+npm run seed
+
 # Build all apps
 npm run build
 
@@ -147,6 +150,23 @@ cd apps/api && npm run test:cov
 # Lint code
 npm run lint
 ```
+
+## Database seed
+
+Run from repo root or `apps/api`:
+
+```bash
+npm run seed
+```
+
+This creates or updates:
+
+- **Admin:** `admin@adultb2b.local` / `Admin123!` (see `.env` for overrides)
+- **Demo users:** 4 fixed users (e.g. ava.creator@example.com) with profiles
+- **Bulk users:** ~50 users with varied roles (creator, company_owner, user), locations, headlines, and about text
+- **Bulk posts:** ~200 published posts with staggered dates for a realistic feed
+
+Seed content is suggestive and industry-appropriate but non-explicit, suitable for demos and shareholder screenshots. All bulk users use password `Password123!` (or `SEED_USER_PASSWORD`) and emails like `*@seed.adultb2b.local`.
 
 ## Testing
 

@@ -55,6 +55,109 @@ const seedUsers: SeedUser[] = [
   },
 ];
 
+// --- Bulk seed catalogs (deterministic, suggestive, non-explicit) ---
+const BULK_USER_COUNT = 50;
+const BULK_POST_COUNT = 200;
+
+const bulkFirstNames = [
+  'Luna', 'Scarlett', 'Jade', 'Violet', 'Sage', 'Blake', 'Remy', 'Quinn',
+  'Phoenix', 'River', 'Skyler', 'Morgan', 'Reese', 'Dakota', 'Ember',
+  'Aria', 'Zara', 'Mila', 'Nova', 'Ivy', 'Stella', 'Ruby', 'Hazel', 'Willow',
+  'Sienna', 'Jasper', 'Finn', 'Asher', 'Rowan', 'Charlie', 'Frankie', 'Alex',
+  'Sam', 'Jordan', 'Casey', 'Riley', 'Avery', 'Parker', 'Hayden', 'Cameron',
+];
+
+const bulkLastNames = [
+  'Lane', 'Reed', 'Brooks', 'Hart', 'Cole', 'Shaw', 'Fox', 'Wilde',
+  'Blaze', 'Storm', 'Rose', 'Gray', 'Stone', 'Cruz', 'Vega',
+  'Marsh', 'Dawn', 'Lake', 'Sky', 'Belle', 'Reign', 'Luxe', 'Prime', 'Elite',
+];
+
+const bulkRoleAssignments: ('creator' | 'company_owner' | 'user')[] = [
+  'creator', 'creator', 'creator', 'creator', 'user', 'user', 'company_owner', 'user', 'creator', 'user',
+  'user', 'creator', 'company_owner', 'creator', 'user', 'creator', 'user', 'creator', 'user', 'company_owner',
+  'creator', 'user', 'creator', 'user', 'creator', 'user', 'creator', 'user', 'creator', 'user',
+  'company_owner', 'creator', 'user', 'creator', 'user', 'creator', 'user', 'creator', 'user', 'creator',
+  'user', 'creator', 'user', 'company_owner', 'creator', 'user', 'creator', 'user', 'creator', 'user',
+];
+
+const bulkLocations = [
+  'Los Angeles, CA', 'Miami, FL', 'Las Vegas, NV', 'New York, NY', 'Austin, TX',
+  'London, UK', 'Berlin, Germany', 'Barcelona, Spain', 'Remote', 'Toronto, Canada',
+  'Chicago, IL', 'Atlanta, GA', 'Phoenix, AZ', 'San Diego, CA', 'Denver, CO',
+];
+
+const bulkHeadlines = [
+  'Creator & content partner',
+  'Building authentic connections in the industry',
+  'Content creator | Collabs welcome',
+  'Studio lead & talent partner',
+  'Helping creators grow their brand',
+  'Independent creator | DMs open for serious collabs',
+  'Marketing & growth for adult brands',
+  'Production and distribution partner',
+  'Creator economy enthusiast',
+  'Connecting talent with opportunities',
+];
+
+const bulkAboutTexts = [
+  'Passionate about quality content and genuine partnerships. Always open to new projects.',
+  'Here to network, share ideas, and explore collaborations. No spam, just real connections.',
+  'Industry veteran. Focus on sustainable growth and creator-first partnerships.',
+  'Love connecting with fellow creators and brands. Hit me up for collabs or just to chat.',
+  'Building something new in this space. Always happy to connect with like-minded people.',
+  'Creator first. Here for authentic conversations and serious opportunities.',
+  'Supporting creators and studios with strategy and execution. Let\'s talk.',
+  'Focused on premium content and long-term partnerships. Open to the right fit.',
+  'Community-driven. Here to learn, share, and grow together.',
+  'Bringing a fresh perspective to the industry. DMs open for interesting projects.',
+];
+
+const bulkPostTemplates = [
+  'New drop coming soon. So excited to share this one with you all.',
+  'Grateful for this community. The support is unreal.',
+  'Behind the scenes today. You wouldn’t believe the energy on set.',
+  'Just wrapped a collab I’ve been dreaming about. More soon.',
+  'If you’re not in the room, you’re missing out. Let’s connect.',
+  'Quality over quantity. Always.',
+  'Another day, another project. This industry never sleeps.',
+  'Shoutout to everyone who showed up this week. You know who you are.',
+  'Building in public. Big things coming.',
+  'The right partnerships change everything. Here’s to more of them.',
+  'New content dropping this week. Stay tuned.',
+  'So much happening behind the scenes. Can’t wait to share.',
+  'Collaboration over competition. That’s how we win.',
+  'Just another reminder: your network is your net worth.',
+  'Feeling inspired today. Time to create.',
+  'When the right people align, magic happens. Grateful for my circle.',
+  'No cap — this community is different. Proud to be part of it.',
+  'New month, new goals. Let’s get it.',
+  'Support your favorite creators. It matters.',
+  'Real recognize real. You know where to find me.',
+  'Another successful collab in the books. More to come.',
+  'Hustle in silence. Let the work speak.',
+  'Building something special. Glad you’re here for it.',
+  'The industry is evolving. So are we.',
+  'Your vibe attracts your tribe. Make it count.',
+  'Weekend vibes: planning the next drop.',
+  'Serious inquiries only. Let’s build.',
+  'Growth mode. No days off.',
+  'Thank you for the support. It doesn’t go unnoticed.',
+  'Here for the long game. Quality always wins.',
+];
+
+/** Deterministic pick: arr[i % arr.length] */
+function pick<T>(arr: T[], index: number): T {
+  return arr[index % arr.length];
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
 async function ensureRole(roleRepo: ReturnType<typeof AppDataSource.getRepository>, key: string, name: string) {
   let role = await roleRepo.findOne({ where: { key } });
   if (!role) {
@@ -288,6 +391,27 @@ async function ensurePost(
   return (await postRepo.save(post)) as Post;
 }
 
+async function createPostWithPublishedAt(
+  postRepo: ReturnType<typeof AppDataSource.getRepository>,
+  authorUserId: string,
+  content: string,
+  publishedAt: Date,
+) {
+  const post = postRepo.create({
+    authorUserId,
+    authorCompanyId: null,
+    content,
+    kind: PostKind.POST,
+    status: PostStatus.PUBLISHED,
+    contentFormat: ContentFormat.PLAIN,
+    visibility: PostVisibility.PUBLIC,
+    moderationStatus: ModerationStatus.APPROVED,
+    publishedAt,
+    metadata: { seedTag: 'bulk' },
+  });
+  return (await postRepo.save(post)) as Post;
+}
+
 async function run() {
   await AppDataSource.initialize();
 
@@ -350,18 +474,30 @@ async function run() {
     const fallbackServices = ['Marketing Services', 'Content Production'];
     const fallbackNiches = ['Creator Platforms', 'Marketing/Traffic'];
 
+    const allSkillNames = [
+      ...fallbackSkills,
+      'Video Editing', 'Photography', 'Social Media Management', 'Copywriting', 'SEO',
+      'Affiliate Marketing', 'Community Management', 'Talent Management',
+    ];
+    const allServiceNames = [
+      ...fallbackServices,
+      'Talent Agency', 'Distribution', 'Licensing', 'Consulting', 'Hosting Services',
+    ];
+    const allNicheNames = [
+      ...fallbackNiches,
+      'Premium/Mainstream', 'Production Studios', 'Cam Sites', 'Technology', 'Distribution',
+    ];
+
     const skills: Skill[] = [];
-    for (const name of fallbackSkills) {
+    for (const name of allSkillNames) {
       skills.push(await ensureLookupItem<Skill>(skillRepo, name));
     }
-
     const services: Service[] = [];
-    for (const name of fallbackServices) {
+    for (const name of allServiceNames) {
       services.push(await ensureLookupItem<Service>(serviceRepo, name));
     }
-
     const niches: IndustryNiche[] = [];
-    for (const name of fallbackNiches) {
+    for (const name of allNicheNames) {
       niches.push(await ensureLookupItem<IndustryNiche>(nicheRepo, name));
     }
 
@@ -376,6 +512,47 @@ async function run() {
         headline: `${user.displayName} on AdultB2B`,
         about: 'Demo profile seeded for local development.',
         location: 'Remote',
+      });
+    }
+
+    // Bulk seed: ~50 users with profiles
+    const bulkUsersCreated: User[] = [];
+    for (let i = 0; i < BULK_USER_COUNT; i++) {
+      const firstName = pick(bulkFirstNames, i);
+      const lastName = pick(bulkLastNames, i);
+      const displayName = `${firstName} ${lastName}`;
+      const baseUsername = slugify(displayName);
+      const username = `${baseUsername}${i}`;
+      const email = `${username}@seed.adultb2b.local`;
+      const roleKey = pick(bulkRoleAssignments, i);
+      const user = await ensureUser(
+        userRepo,
+        roleRepo,
+        {
+          email,
+          displayName,
+          username,
+          roleKeys: [roleKey, 'user'],
+        },
+        seedPassword,
+        false,
+      );
+      bulkUsersCreated.push(user);
+
+      const userSkills = [pick(skills, i), pick(skills, i + 7), pick(skills, i + 3)].filter(
+        (s, idx, arr) => arr.findIndex((x) => x.id === s.id) === idx,
+      );
+      const userServices = [pick(services, i), pick(services, i + 2)].filter(
+        (s, idx, arr) => arr.findIndex((x) => x.id === s.id) === idx,
+      );
+      const userNiches = [pick(niches, i), pick(niches, i + 5)].filter(
+        (n, idx, arr) => arr.findIndex((x) => x.id === n.id) === idx,
+      );
+      await ensureProfileForUser(profileRepo, user, userSkills, userServices, userNiches, {
+        headline: pick(bulkHeadlines, i),
+        about: pick(bulkAboutTexts, i),
+        location: pick(bulkLocations, i),
+        websiteUrl: i % 4 === 0 ? 'https://example.com' : undefined,
       });
     }
 
@@ -483,7 +660,19 @@ async function run() {
       PostVisibility.PUBLIC,
     );
 
+    // Bulk seed: ~200 posts with staggered publishedAt (all user authors)
+    const allPostAuthors: User[] = [...seedUsersCreated, ...bulkUsersCreated];
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    for (let i = 0; i < BULK_POST_COUNT; i++) {
+      const author = pick(allPostAuthors, i);
+      const content = pick(bulkPostTemplates, i);
+      const publishedAt = new Date(now - (i % 31) * oneDayMs - (i % 24) * 60 * 60 * 1000);
+      await createPostWithPublishedAt(postRepo, author.id, content, publishedAt);
+    }
+
     console.log('Seed completed.');
+    console.log(`Bulk: ${bulkUsersCreated.length} users, ${BULK_POST_COUNT} posts.`);
     console.log('Admin login:');
     console.log(`  Email: ${adminEmail}`);
     console.log(`  Password: ${adminPassword}`);
