@@ -79,6 +79,8 @@ AdultB2B/
    - **API (Swagger):** http://localhost:4000/api/docs
    - **MinIO Console:** http://localhost:9011
 
+   Authenticated routes: Feed, Network, Messages, Groups, Profile (in-app not-found for unknown routes).
+
 Optional: if you see `EMFILE: too many open files` from the Next.js watcher, increase the limit (e.g. `ulimit -n 65536`) or ignore it; the app usually still serves.
 
 ### Setup (first-time / clone)
