@@ -79,7 +79,7 @@ AdultB2B/
    - **API (Swagger):** http://localhost:4000/api/docs
    - **MinIO Console:** http://localhost:9011
 
-   Authenticated routes: Feed, Network, Messages, Groups, Profile (in-app not-found for unknown routes).
+   Authenticated routes: Feed, Network, Messages, Groups, Profile (view and edit at /profile and /profile/edit), in-app not-found for unknown routes.
 
 **EMFILE:** The Next.js dev server uses file watcher polling by default to avoid "too many open files." If you still hit EMFILE (e.g. very large repos), use `npm run dev:safe` or `npm run dev:web:safe` to run with a raised file limit.
 
