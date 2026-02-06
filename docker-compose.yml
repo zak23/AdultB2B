@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: adultb2b-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-adultb2b}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adultb2b_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-adultb2b}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-adultb2b} -d ${POSTGRES_DB:-adultb2b}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adultb2b-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: adultb2b-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adultb2b-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: adultb2b-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9010:9000"
+      - "9011:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - adultb2b-network
+
+  # MinIO bucket initialization
+  minio-init:
+    image: minio/mc:latest
+    container_name: adultb2b-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY:-minioadmin} ${S3_SECRET_KEY:-minioadmin};
+      mc mb local/${S3_BUCKET:-adultb2b-media} --ignore-existing;
+      mc anonymous set download local/${S3_BUCKET:-adultb2b-media}/public;
+      exit 0;
+      "
+    networks:
+      - adultb2b-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  adultb2b-network:
+    driver: bridge
