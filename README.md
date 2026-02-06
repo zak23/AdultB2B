@@ -81,7 +81,7 @@ AdultB2B/
 
    Authenticated routes: Feed, Network, Messages, Groups, Profile (in-app not-found for unknown routes).
 
-Optional: if you see `EMFILE: too many open files` from the Next.js watcher, increase the limit (e.g. `ulimit -n 65536`) or ignore it; the app usually still serves.
+**EMFILE:** The Next.js dev server uses file watcher polling by default to avoid "too many open files." If you still hit EMFILE (e.g. very large repos), use `npm run dev:safe` or `npm run dev:web:safe` to run with a raised file limit.
 
 ### Setup (first-time / clone)
 
@@ -120,8 +120,21 @@ Optional: if you see `EMFILE: too many open files` from the Next.js watcher, inc
 ## Development Commands
 
 ```bash
-# Start all services
+# Start all services (API + Web)
 npm run dev
+
+# Start API or Web only (from repo root)
+npm run dev:api
+npm run dev:web
+
+# Restart after port-in-use (EADDRINUSE): kills process on port then starts
+npm run dev:api:restart   # API on :4000
+npm run dev:web:restart   # Web on :3001
+npm run dev:restart       # Both API and Web
+
+# If EMFILE still occurs (polling is on by default)
+npm run dev:safe          # dev with raised file limit
+npm run dev:web:safe      # web only with raised file limit
 
 # Start infrastructure only
 npm run docker:up

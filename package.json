@@ -10,7 +10,12 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm run start:dev --workspace=apps/api",
+    "dev:api:restart": "(lsof -t -i :4000 | xargs -r kill) 2>/dev/null; npm run dev:api",
     "dev:web": "npm run dev --workspace=apps/web",
+    "dev:web:restart": "(lsof -t -i :3001 | xargs -r kill) 2>/dev/null; npm run dev:web",
+    "dev:restart": "(lsof -t -i :4000 -i :3001 | xargs -r kill) 2>/dev/null; npm run dev",
+    "dev:safe": "sh -c 'ulimit -n 65536 2>/dev/null; npm run dev'",
+    "dev:web:safe": "sh -c 'ulimit -n 65536 2>/dev/null; npm run dev:web'",
     "build": "npm run build --workspaces",
     "build:api": "npm run build --workspace=apps/api",
     "build:web": "npm run build --workspace=apps/web",
